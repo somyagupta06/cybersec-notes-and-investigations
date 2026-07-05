@@ -1,3 +1,184 @@
+# Windows Enterprise Incident Investigation
+
+## Reconstructing a Phishing-to-DNS Data Exfiltration Attack using Elastic Security
+
+> **Platform:** Elastic Security  
+> **Investigation Type:** Windows Incident Response (DFIR)  
+> **Methodology:** Evidence-Driven Investigation
+
+---
+
+# Executive Summary
+
+A Windows workstation belonging to a Senior Finance Director was compromised after the user opened a phishing email containing a malicious attachment.
+
+The investigation reconstructed the complete attack chain by correlating process execution, PowerShell activity, Active Directory reconnaissance, file operations, network share access, and DNS activity.
+
+The attacker executed a malicious PowerShell payload, performed enterprise reconnaissance using PowerView, collected sensitive financial documents from a network share, compressed the data into a ZIP archive, and exfiltrated the archive through DNS.
+
+---
+
+# Investigation Scope
+
+This investigation focused on analysing a compromised Windows endpoint using Elastic Security.
+
+Artifacts analysed during the investigation included:
+
+- Process Creation Events
+- PowerShell Activity
+- File Creation Events
+- Parent-Child Process Relationships
+- DNS Activity
+- Command Line Execution
+- Network Share Access
+- Active Directory Enumeration
+
+---
+
+# Investigation Objectives
+
+- Identify the initial execution vector.
+- Determine how the attacker gained code execution.
+- Reconstruct attacker activity.
+- Investigate Active Directory enumeration.
+- Identify targeted files.
+- Determine how data was collected and staged.
+- Identify the exfiltration technique.
+- Reconstruct the complete attack timeline.
+
+---
+
+# Investigation Methodology
+
+Rather than searching randomly for suspicious processes, the investigation followed an evidence-driven approach.
+
+Victim Identification
+        ↓
+Timeline Reconstruction
+        ↓
+Process Correlation
+        ↓
+PowerShell Analysis
+        ↓
+Discovery
+        ↓
+Collection
+        ↓
+Staging
+        ↓
+Compression
+        ↓
+DNS Exfiltration
+        ↓
+Attack Timeline Reconstruction
+
+---
+
+# Stage 1 — Victim Identification & Timeline Reconstruction
+
+## Objective
+
+Identify the compromised user and establish a reliable investigation timeline.
+
+---
+
+## Evidence
+
+- Filtered events using the affected user (`michael.ascot`).
+- Sorted events chronologically (Oldest → Newest).
+
+---
+
+## Analysis
+
+Instead of searching directly for malware or PowerShell events, the investigation first reduced the scope to the compromised user. Sorting events chronologically transformed thousands of logs into a structured attack timeline, making behavioural correlation significantly easier.
+
+---
+
+## Findings
+
+- Successfully identified the compromised user.
+- Established a chronological investigation timeline.
+- Reduced investigative noise before analysing attacker activity.
+
+📷 **Screenshot:** User Filter & Timeline Reconstruction
+
+---
+
+# Stage 2 — Initial Access & PowerShell Execution
+
+## Objective
+
+Identify how the attacker gained code execution.
+
+---
+
+## Evidence
+
+- Phishing email opened through Outlook.
+- ZIP attachment downloaded.
+- Malicious `.lnk` file executed.
+- `OUTLOOK.EXE` spawned `powershell.exe`.
+- PowerShell downloaded a remote payload.
+
+---
+
+## Analysis
+
+The phishing attachment triggered PowerShell execution through a malicious LNK file. PowerShell then downloaded and executed a remote payload in memory using `IEX` and `DownloadString()`, establishing a reverse shell with Powercat.
+
+---
+
+## Findings
+
+- Initial access achieved through phishing.
+- Malicious PowerShell execution confirmed.
+- Reverse shell established.
+
+📷 **Screenshots**
+
+- Phishing Email
+- PowerShell Command
+- Powercat Execution
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <img width="986" height="426" alt="Screenshot 2026-05-26 at 10 05 30 AM" src="https://github.com/user-attachments/assets/3bab06b5-eed7-4e04-8309-de8384d1e715" /><img width="1152" height="448" alt="Screenshot 2026-05-26 at 10 00 27 AM" src="https://github.com/user-attachments/assets/67dad5de-aedb-4a36-b903-d751d55e63ff" /><img width="1470" height="956" alt="Screenshot 2026-05-26 at 9 56 07 AM" src="https://github.com/user-attachments/assets/8ad5d9ad-6ee5-4a8f-a2e1-6da6cc5328e2" />
 timestamp - <img width="705" height="519" alt="Screenshot 2026-05-26 at 9 35 12 AM" src="https://github.com/user-attachments/assets/952a8086-a09c-499c-8ca8-8aad538cbfba" />
 usser.name <img width="1470" height="956" alt="Screenshot 2026-05-26 at 9 39 10 AM" src="https://github.com/user-attachments/assets/d691d2b2-ac61-4a95-9721-3f977855755a" />
