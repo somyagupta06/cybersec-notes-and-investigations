@@ -142,15 +142,19 @@ strings /var/log/auth.log
 ```
 ## Analysis
 
-The authentication log was not stored as plain text and appeared as binary data during initial inspection. To continue the investigation, printable strings were extracted from the log.
+The authentication log was not stored as plain text and appeared as binary data during initial inspection. To continue the investigation, printable strings were extracted from the log. The root cause of the corruption itself — whether log rotation, a transfer/encoding artifact, or deliberate anti-forensic tampering — was not established from the evidence available. This is flagged as an open question rather than assumed to be benign.
 
-Recovered authentication events showed:
+Recovered log entries showed a detail that changes how the rest of this section reads: all failed authentication attempts were directed at an account named microservice, while the successful logins were to a different, similarly-named account: mircoservice. No failed attempts were recorded against the account that was actually accessed.
 
-- Multiple failed SSH authentication attempts.
-- Enumeration of invalid usernames.
-- Successful authentication using the `mircoservice` account.
+This means the brute-force activity and the successful login cannot be treated as one continuous event — they are two separate findings:
+
+
+- microservice — repeatedly targeted by failed SSH attempts. Never authenticated.
+- mircoservice — a distinct account that authenticated successfully, with no attack recorded against it in the recovered log data.
 
 The sequence of failed authentication attempts followed by a successful login is consistent with a credential attack.
+
+Initial access to mircoservice is not explained by the brute-force activity observed. The two are correlated only by timing and naming similarity, not by a demonstrated causal link.
 
 Although the source IP became the primary investigation pivot, the available evidence does not conclusively determine whether it belongs to the attacker. Additional artifacts were required before attribution could be made.
 
@@ -158,10 +162,10 @@ Although the source IP became the primary investigation pivot, the available evi
 
 Authentication logs showed:
 
-- Multiple failed SSH authentication attempts.
-- Invalid username enumeration.
-- Successful authentication for the `mircoservice` account.
-- Repeated activity originating from the same source IP.
+- Authentication logs showed multiple failed SSH authentication attempts and invalid username enumeration — all against microservice.
+- Successful authentication was recorded for a separate account, mircoservice, with no failed attempts against it in the recovered data.
+- Root cause of the log's binary/corrupted state was not determined.
+- Initial access vector for mircoservice remains unconfirmed.
 
 These events indicated a likely credential attack followed by successful authentication.
 
@@ -241,19 +245,16 @@ ps aux
 
 ## Analysis
 
-The process list showed activity associated with the `mircoservice` account.
-
-One process was executing from a hidden directory located inside the user's home directory.
-
-Hidden directories are common on Linux systems; however, execution of custom binaries from an uncommon hidden location justified additional investigation.
-
-The Python process listening on Port 80 was noted as an artifact of interest.
-
-Based on the available evidence alone, its relationship to the compromise could not be conclusively established.
-
-Additional process inspection, parent process analysis, executable verification, and network correlation would be required to determine whether it was legitimate or malicious.
-
-The investigation therefore focused on examining the contents of the hidden directory.
+The process list showed activity associated with the `mircoservice` account. Two processes were found running under this account:
+ 
+- A binary at `/home/mircoservice/.tmp/.strokes`
+- A binary named `printer_app`
+Execution of custom binaries from a hidden location (`.tmp/`) inside the user's home directory justified additional investigation. The Python process listening on Port 80 was also noted as an artifact of interest; based on the available evidence alone, its relationship to the compromise could not be conclusively established. Additional process inspection, parent process analysis, executable verification, and network correlation would be required to determine whether it was legitimate or malicious.
+ 
+The investigation prioritized examining the contents of the hidden directory (`.strokes`), covered in Stage 5 below.
+ 
+> **Open thread — `printer_app`:** this process was identified running under the same account and directory context as `.strokes`, but was not deep-dived to the same depth in this pass.
+> *(Author's note: if `strings`/static analysis was actually run against this binary and produced output referencing systemd, netcat, or persistence-related calls, paste the actual command output here as evidence rather than describing it in adjectives — see the cron section below, which currently asserts this without showing the output. If that analysis was not completed, say so plainly, as done here, rather than implying it was.)*
 
 ## Findings
 
@@ -290,23 +291,21 @@ indicated potentially malicious activity associated with the account.
 
 Since the scenario suggested attacker persistence, common persistence locations were examined.
 
-## Systemd Services
+### Malware Analysis — `strokes.c`
+ 
+The hidden directory contained `strokes.c`. Reading the source code — rather than relying on the filename or directory location alone — confirmed the following: the program opens a raw input device (`/dev/input/event3`) and logs every keypress via `printf`. This is a functional keylogger, confirmed by source review.
+ 
+**Exfiltration path — not identified.** The reviewed source only writes captured keystrokes to standard output (`printf`). There is no network call and no file write in this code path. No exfiltration mechanism was identified in the code reviewed. Either a separate, un-analyzed component handles delivery of the captured data, or this represents incomplete or dormant tooling. This is stated as a finding rather than left implicit.
 
-A custom service named:
+### Systemd Services
 
-```text
-strokes.service
+A custom service named `strokes.service` was configured to execute `/home/mircoservice/.tmp/.strokes` during system startup. This provided a persistent execution mechanism.
+ 
+A **second, independent** systemd service was also identified: `backup.service` (with an associated `backup.service.save` file), configured with:
 ```
-
-was configured to execute:
-
-```text
-/home/mircoservice/.tmp/.strokes
+ExecStart=/home/mircoservice/backup/sys_backup
 ```
-
-during system startup.
-
-This provided a persistent execution mechanism.
+Unlike `strokes.service`, which is named transparently for what it does, `backup.service` is named to resemble routine system infrastructure — persistence disguised through naming rather than concealment. This represents a second, independently-named foothold on the same account, not a single point of failure.
 
 > 📷 **Screenshot:** `Systemd Service`
 
@@ -355,75 +354,50 @@ The service was configured to start automatically during system boot, providing 
 # Attack Timeline
 
 | Phase | Evidence | Finding |
-|--------|----------|---------|
-| Initial Activity | Multiple SSH authentication attempts | Unauthorized authentication activity observed |
-| Authentication | Successful login using `mircoservice` | Suspicious account became investigation pivot |
-| User Investigation | Newly created local account identified | Account creation events recovered |
-| Process Execution | Process running from `/home/mircoservice/.tmp/` | Activity associated with hidden directory |
-| Malware Discovery | `strokes.c` identified | Source code contained keylogging functionality |
+|---|---|---|
+| Initial Activity | Multiple SSH authentication attempts against `microservice` | Unauthorized authentication activity observed; account never authenticated |
+| Authentication | Successful login using `mircoservice` — a separate account with no failed attempts recorded against it | Initial access vector for this account remains unconfirmed |
+| User Investigation | `badactor` group removed; `mircoservice` (UID 1001) created minutes later | Account creation and prior-account deletion events recovered |
+| Process Execution | Processes running from `/home/mircoservice/.tmp/` and `printer_app` | Two independent processes identified under one account |
+| Malware Discovery | `strokes.c` reviewed in full | Confirmed keylogging functionality; no exfiltration path identified in the code |
 | Persistence | `strokes.service` | Binary configured to execute during system startup |
-| Additional Persistence | `printer_app` | Startup execution identified through scheduled task |
+| Additional Persistence | `backup.service` / `backup.service.save` | Second, independently-named persistence mechanism on the same account |
 
 ---
 
 # Indicators of Compromise (IOCs)
 
-## Users
+**Users**
+- `mircoservice`
+- `badactor`
+**Files**
+- `/home/mircoservice/.tmp/strokes.c`
+- `/home/mircoservice/.tmp/.strokes`
+- `printer_app`
+- `/home/mircoservice/backup/sys_backup`
+**Services**
+- `strokes.service`
+- `backup.service`
+- `backup.service.save`
+**Directories**
+- `/home/mircoservice/.tmp/`
+- `/home/mircoservice/backup/`
+**Network**
+- SSH authentication activity (failed attempts against `microservice`; successful logins to `mircoservice`)
+- Python process listening on Port 80 (unattributed)
 
-```text
-mircoservice
-badactor
-```
-
----
-
-## Files
-
-```text
-/home/mircoservice/.tmp/strokes.c
-
-/home/mircoservice/.tmp/.strokes
-
-printer_app
-```
-
----
-
-## Services
-
-```text
-strokes.service
-```
-
----
-
-## Directories
-
-```text
-/home/mircoservice/.tmp/
-```
-
----
-
-## Network
-
-```text
-SSH Authentication Activity
-
-Python process listening on Port 80
-```
 
 ---
 
 # MITRE ATT&CK Mapping
 
 | Tactic | Technique | Justification |
-|----------|-----------|---------------|
-| Credential Access | Brute Force (T1110) | Multiple failed SSH authentication attempts followed by successful authentication |
-| Persistence | Create Account (T1136) | Local account creation artifacts recovered |
-| Persistence | System Services (T1543) | Custom systemd service configured to execute automatically |
-| Persistence | Scheduled Task / Cron (T1053) | Startup execution configured using scheduled task |
-| Execution | Command and Scripting Interpreter (T1059) | Executable launched through Linux binaries |
+|---|---|---|
+| Credential Access | Brute Force (T1110) | Multiple failed SSH authentication attempts recorded against `microservice`; no confirmed link to the successful login on `mircoservice` |
+| Persistence | Create Account (T1136) | Local account creation artifacts recovered for `mircoservice`, alongside deletion of a prior account (`badactor`) |
+| Persistence | Systemd Service (T1543.002) | Two independently-named services (`strokes.service`, `backup.service`) configured to execute automatically on the same account |
+| Execution | Command and Scripting Interpreter (T1059) | Executables launched via Linux binaries under `mircoservice` |
+| Collection | Input Capture / Keylogging (T1056.001) | `strokes.c` confirmed via source review to capture keystrokes; no exfiltration mechanism identified |
 | Discovery | Process Discovery (T1057) | Running processes examined during investigation |
 | Discovery | System Information Discovery (T1082) | Host information collected during initial profiling |
 
@@ -517,13 +491,12 @@ If this were a real production incident, the following containment actions would
 
 # Investigation Limitations
 
-The following limitations were identified during the investigation:
-
-- The initial access vector could not be conclusively determined.
+- The initial access vector could not be conclusively determined. The account under brute-force attack (`microservice`) was not the account that was actually accessed (`mircoservice`).
+- The root cause of the `auth.log` corruption was not established.
 - The Python process listening on Port 80 could not be fully attributed using the available evidence.
-- Static string analysis suggested persistence-related functionality but did not confirm runtime behavior.
-- Authentication logs appeared in a binary format, limiting direct log analysis.
-
+- `printer_app` was identified as a running process under the investigated account but was not fully statically analyzed in this pass — see note in Stage 4/Cron Analysis.
+- No exfiltration mechanism was identified in the `strokes.c` source reviewed; whether captured keystrokes are transmitted elsewhere by another component is unresolved.
+- Static string analysis (where performed) suggested persistence-related functionality but did not confirm runtime behavior.
 These limitations were documented to avoid drawing conclusions beyond the available evidence.
 
 ---
