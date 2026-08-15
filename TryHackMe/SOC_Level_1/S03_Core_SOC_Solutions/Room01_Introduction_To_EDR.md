@@ -1,4 +1,4 @@
-# Endpoint Detection and Response (EDR) 
+# Endpoint Detection and Response 
 
 ## 1. Why Endpoint Security is Important
 Today, almost all work is done on **digital devices** like laptops, desktops, and mobiles.  
