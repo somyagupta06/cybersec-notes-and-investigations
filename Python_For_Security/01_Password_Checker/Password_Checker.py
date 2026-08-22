@@ -1,4 +1,4 @@
-prrint("Hello , This is a password checker.")
+print("Hello , This is a password checker.")
 password = str(input("Enter a password of at least 8 characters. : "))
 a = 0 
 Common_Passwords = ['12345678', 'password', 'password1', 'PASSWORD']
