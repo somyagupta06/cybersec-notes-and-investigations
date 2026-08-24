@@ -1,6 +1,6 @@
 #  Python for Security
 
-A practical learning journey focused on using **Python for cybersecurity, SOC operations, DFIR, threat hunting, and security automation**.
+A practical learning journey focused on using **Python for cybersecurity, SOC operations, threat hunting, and security automation**.
 
 This repository documents my progress as I learn Python by building small, security-focused tools and gradually moving toward more practical SOC and DFIR automation.
 
