@@ -2,7 +2,7 @@
 
 A Python script that checks password strength against multiple security criteria and gives feedback on how to improve it.
 
-## What it does
+## What it does      
 
 Takes a password as input and checks it against these criteria:
 - Minimum 8 characters
