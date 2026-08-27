@@ -1,4 +1,4 @@
-## Password Strength Checker
+# Password Strength Checker
 
 A Python script that checks password strength against multiple security criteria and gives feedback on how to improve it.
 
