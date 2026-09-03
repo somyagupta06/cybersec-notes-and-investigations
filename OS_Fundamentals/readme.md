@@ -1,1 +1,2 @@
-# OS Fundamentals
+# OS Fundamentals 
+Linux and Windows
