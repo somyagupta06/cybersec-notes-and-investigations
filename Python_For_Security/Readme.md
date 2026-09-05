@@ -1,4 +1,4 @@
-##  Python for Security
+#  Python for Security
 
 A practical learning journey focused on using **Python for cybersecurity, SOC operations, threat hunting, and security automation**.
 
