@@ -6,7 +6,8 @@
 - 
 
 **Why it matters:**
-- 
+- A switch is used to connect to differnet LANs.
+- A client can be a server as well as a client.
 
 **Key commands / steps:**
 - 
