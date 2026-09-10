@@ -2,24 +2,14 @@
 
 ## Network Devices
 
-**What it is:**
-- 
 
-**Why it matters:**
-- A switch is used to connect to differnet LANs.
-- A client can be a server as well as a client.
+**Important points**
 
-**Key commands / steps:**
-- 
+- A same device can be a server as well as a client.
+- Switches can't connect directly to internet and send data between two LANs.
+- Firewalls can be placed both inside and outside of our network. 
 
-**Common confusion / gotcha:**
-- 
 
-**What breaks if this goes wrong:**
-- 
-
-**Note to self:**
-- 
 
 ---
 
