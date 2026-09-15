@@ -59,3 +59,5 @@
 - The two-step decision process finally made sense as: **first AD decides *which protocol's* route to trust, then metric decides *which specific path* within that same protocol is best.** Keeping those two steps mentally separate stopped the confusion between "which is better, AD or metric."
 
 ## RIP and EIGRP 
+
+- RIP stands for Routing Information Protocol.
