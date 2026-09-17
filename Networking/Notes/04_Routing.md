@@ -61,4 +61,4 @@
 ## RIP and EIGRP 
 
 - RIP stands for Routing Information Protocol.
-- EIGRP stands for Exterior inforamtion gateway routing protocol.
+- EIGRP stands for Exterior information gateway routing protocol.
