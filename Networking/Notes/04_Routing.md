@@ -63,3 +63,5 @@
 - RIP stands for Routing Information Protocol.
 - EIGRP stands for Exterior information gateway routing protocol.
 - RIP has two types for IPv4 : RIPv1 and RIPv2.
+- RIP has one type in IPv6 : RIPng ( Routing Information Protocol next generation)
+- 
